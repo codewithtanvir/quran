@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quranic Reflections</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Amiri:ital,wght@0,400;0,700;1,400&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* from-gray-900 */
+        }
+        .font-serif { font-family: 'Amiri', serif; }
+
+        .bg-gradient-custom {
+             background-image: linear-gradient(to bottom right, #111827, #047857, #1f2937);
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { 
+            animation: fade-in 0.5s ease-in-out forwards; 
+        }
+
+        .mood-button:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body class="bg-gradient-custom text-white flex flex-col items-center justify-center min-h-screen p-4 selection:bg-teal-400/30">
+
+    <div class="w-full max-w-4xl mx-auto text-center">
+        <header class="mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold tracking-tight">Quranic Reflections</h1>
+            <p class="text-lg text-white/70 mt-2">Find solace and guidance from the Quran based on your heart's state.</p>
+        </header>
+
+        <main>
+            <div class="mb-12">
+                <h2 class="text-xl font-medium mb-6">How are you feeling right now?</h2>
+                <div id="mood-selector" class="flex justify-center items-center flex-wrap gap-x-6 md:gap-x-10 gap-y-6">
+                    <!-- Mood buttons will be injected here by JavaScript -->
+                </div>
+            </div>
+
+            <div id="verse-container" class="min-h-[350px] flex items-center justify-center">
+                 <!-- Verse card will be injected here -->
+            </div>
+        </main>
+        
+        <footer class="mt-12 text-center text-xs text-white/40">
+            <p>Verses and translations sourced from Al Quran Cloud API. Recitation by Mishary Rashid Alafasy.</p>
+            <p>Developed by <a href="github.com/codewithtanvir" class="text-teal-400 hover:underline">Tanvir Rahman</a>.</p>
+        </footer>
+    </div>
+
+    <script>
+        // --- Data and State ---
+        const moodVerseMapping = {
+            sad: ["2:153", "2:155", "3:139", "94:5", "94:6", "12:86", "93:3"],
+            anxious: ["13:28", "2:286", "65:3", "8:30", "40:44", "3:173"],
+            thankful: ["14:7", "2:152", "39:66", "55:13", "31:12"],
+            hopeful: ["94:8", "2:218", "15:56", "39:53", "65:2-3"],
+            seeking_forgiveness: ["3:135", "39:53", "11:90", "71:10", "2:222"]
+        };
+
+        const moods = [
+            { emoji: "😢", label: "Sad", mood: "sad" },
+            { emoji: "😟", label: "Anxious", mood: "anxious" },
+            { emoji: "🙏", label: "Thankful", mood: "thankful" },
+            { emoji: "✨", label: "Hopeful", mood: "hopeful" },
+            { emoji: "🤲", label: "Forgiveness", mood: "seeking_forgiveness" }
+        ];
+
+        let currentAudio = null;
+        let isPlaying = false;
+        let currentVerseData = null;
+
+        // --- DOM Elements ---
+        const moodSelector = document.getElementById('mood-selector');
+        const verseContainer = document.getElementById('verse-container');
+
+        // --- SVG Icons ---
+        const icons = {
+            volume: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>`,
+            pause: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`,
+            copy: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>`,
+            share: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" y1="2" x2="12" y2="15"></line></svg>`
+        };
+
+        // --- Functions ---
+        function renderMoodButtons() {
+            moods.forEach(({ emoji, label, mood }) => {
+                const button = document.createElement('button');
+                button.className = "flex flex-col items-center space-y-2 group transition-transform duration-300 ease-in-out mood-button";
+                button.setAttribute('aria-label', `Select mood: ${label}`);
+                button.onclick = () => handleSelectMood(mood);
+                button.innerHTML = `
+                    <div class="text-5xl md:text-6xl p-4 bg-white/20 rounded-full group-hover:bg-white/30 transition-colors duration-300 backdrop-blur-sm">
+                        ${emoji}
+                    </div>
+                    <span class="text-white/80 text-sm font-medium">${label}</span>
+                `;
+                moodSelector.appendChild(button);
+            });
+        }
+
+        async function handleSelectMood(mood) {
+            verseContainer.innerHTML = `<div class="text-xl animate-pulse">Seeking wisdom for you...</div>`;
+            if (currentAudio) {
+                currentAudio.pause();
+            }
+
+            try {
+                const verseRef = moodVerseMapping[mood][Math.floor(Math.random() * moodVerseMapping[mood].length)];
+                
+                // Reverted to Al Quran Cloud API to fix fetch errors
+                const urls = [
+                    `https://api.alquran.cloud/v1/ayah/${verseRef}/en.asad`,
+                    `https://api.alquran.cloud/v1/ayah/${verseRef}/bn.bengali`,
+                    `https://api.alquran.cloud/v1/ayah/${verseRef}`,
+                    `https://api.alquran.cloud/v1/ayah/${verseRef}/ar.alafasy`
+                ];
+
+                const responses = await Promise.all(urls.map(url => fetch(url)));
+
+                for (const res of responses) {
+                    if (!res.ok) {
+                        throw new Error(`Failed to fetch data: ${res.status} ${res.statusText} for ${res.url}`);
+                    }
+                }
+                
+                const data = await Promise.all(responses.map(res => res.json()));
+                const [enData, bnData, arData, audioData] = data;
+
+                if (enData.code !== 200 || bnData.code !== 200 || arData.code !== 200 || audioData.code !== 200) {
+                    throw new Error('API returned a non-200 status code.');
+                }
+
+                currentVerseData = {
+                    englishText: enData.data.text,
+                    bengaliText: bnData.data.text,
+                    arabicText: arData.data.text,
+                    surahName: enData.data.surah.englishName,
+                    surahNumber: enData.data.surah.number,
+                    ayahNumber: enData.data.numberInSurah,
+                };
+                
+                renderVerseCard(currentVerseData);
+                setupAudio(audioData.data.audio);
+
+            } catch (e) {
+                console.error(e);
+                verseContainer.innerHTML = `<div class="text-red-400 bg-red-900/50 p-4 rounded-lg">Could not fetch a verse. Please try again later.</div>`;
+            }
+        }
+        
+        function renderVerseCard(data) {
+            verseContainer.innerHTML = `
+                <div class="w-full bg-black/20 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-8 relative transition-all duration-500 animate-fade-in">
+                    <p class="font-serif text-3xl md:text-4xl leading-relaxed text-right mb-6" dir="rtl">
+                        ${data.arabicText}
+                    </p>
+                    <div class="grid md:grid-cols-2 gap-6 text-left">
+                        <div class="border-l-2 border-teal-400/50 pl-4">
+                            <h3 class="font-semibold mb-2 text-teal-300">English</h3>
+                            <p class="italic text-white/90">"${data.englishText}"</p>
+                        </div>
+                        <div class="border-l-2 border-teal-400/50 pl-4">
+                            <h3 class="font-semibold mb-2 text-teal-300">বাংলা (Bengali)</h3>
+                            <p class="italic text-white/90">"${data.bengaliText}"</p>
+                        </div>
+                    </div>
+                    <p class="text-center mt-8 text-sm text-white/60">
+                        - Surah ${data.surahName} (${data.surahNumber}:${data.ayahNumber}) -
+                    </p>
+                    <div id="action-buttons" class="absolute bottom-4 right-4 flex items-center space-x-3">
+                        <button id="listen-btn" title="Listen" class="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-300 backdrop-blur-sm text-white">${icons.volume}</button>
+                        <button id="copy-btn" title="Copy" class="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-300 backdrop-blur-sm text-white">${icons.copy}</button>
+                        <button id="share-btn" title="Share" class="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-300 backdrop-blur-sm text-white">${icons.share}</button>
+                    </div>
+                </div>
+            `;
+            // Add event listeners for new buttons
+            document.getElementById('listen-btn').onclick = toggleAudio;
+            document.getElementById('copy-btn').onclick = copyToClipboard;
+            document.getElementById('share-btn').onclick = shareVerse;
+        }
+
+        function setupAudio(audioUrl) {
+            currentAudio = new Audio(audioUrl);
+            const listenBtn = document.getElementById('listen-btn');
+            currentAudio.onplaying = () => {
+                isPlaying = true;
+                if(listenBtn) listenBtn.innerHTML = icons.pause;
+            };
+            currentAudio.onpause = () => {
+                isPlaying = false;
+                if(listenBtn) listenBtn.innerHTML = icons.volume;
+            };
+            currentAudio.onended = () => {
+                isPlaying = false;
+                 if(listenBtn) listenBtn.innerHTML = icons.volume;
+            };
+        }
+
+        function toggleAudio() {
+            if (!currentAudio) return;
+            isPlaying ? currentAudio.pause() : currentAudio.play();
+        }
+
+        function copyToClipboard() {
+            if (!currentVerseData) return;
+            const textToCopy = `
+Arabic: ${currentVerseData.arabicText}
+English: "${currentVerseData.englishText}"
+Bengali: "${currentVerseData.bengaliText}"
+- The Holy Quran, ${currentVerseData.surahName} (${currentVerseData.surahNumber}:${currentVerseData.ayahNumber})
+            `;
+            navigator.clipboard.writeText(textToCopy.trim()).then(() => {
+                alert('Verse copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                alert('Failed to copy verse.');
+            });
+        }
+
+        async function shareVerse() {
+            if (!currentVerseData) return;
+            const shareData = {
+                title: 'Verse from the Quran',
+                text: `"${currentVerseData.englishText}"\n- The Holy Quran, ${currentVerseData.surahName} (${currentVerseData.surahNumber}:${currentVerseData.ayahNumber})`,
+                url: window.location.href
+            };
+            try {
+                if (navigator.share) {
+                    await navigator.share(shareData);
+                } else {
+                    alert('Web Share API is not supported. Copying to clipboard instead.');
+                    copyToClipboard();
+                }
+            } catch (err) {
+                console.error('Error sharing:', err);
+            }
+        }
+
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderMoodButtons();
+        });
+    </script>
+</body>
+</html>
