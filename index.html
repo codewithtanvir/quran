@@ -35,14 +35,14 @@
 
     <div class="w-full max-w-4xl mx-auto text-center">
         <header class="mb-10">
-            <h1 class="text-4xl md:text-5xl font-bold tracking-tight">Quranic Reflections</h1>
-            <p class="text-lg text-white/70 mt-2">Find solace and guidance from the Quran based on your heart's state.</p>
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">Quranic Reflections</h1>
+            <p class="text-base sm:text-lg text-white/70 mt-2">Find solace and guidance from the Quran based on your heart's state.</p>
         </header>
 
         <main>
             <div class="mb-12">
                 <h2 class="text-xl font-medium mb-6">How are you feeling right now?</h2>
-                <div id="mood-selector" class="flex justify-center items-center flex-wrap gap-x-6 md:gap-x-10 gap-y-6">
+                <div id="mood-selector" class="flex justify-center items-center flex-wrap gap-x-4 sm:gap-x-6 md:gap-x-10 gap-y-6">
                     <!-- Mood buttons will be injected here by JavaScript -->
                 </div>
             </div>
@@ -54,7 +54,6 @@
         
         <footer class="mt-12 text-center text-xs text-white/40">
             <p>Verses and translations sourced from Al Quran Cloud API. Recitation by Mishary Rashid Alafasy.</p>
-            <p>Developed by <a href="github.com/codewithtanvir" class="text-teal-400 hover:underline">Tanvir Rahman</a>.</p>
         </footer>
     </div>
 
@@ -100,7 +99,7 @@
                 button.setAttribute('aria-label', `Select mood: ${label}`);
                 button.onclick = () => handleSelectMood(mood);
                 button.innerHTML = `
-                    <div class="text-5xl md:text-6xl p-4 bg-white/20 rounded-full group-hover:bg-white/30 transition-colors duration-300 backdrop-blur-sm">
+                    <div class="text-4xl sm:text-5xl md:text-6xl p-3 sm:p-4 bg-white/20 rounded-full group-hover:bg-white/30 transition-colors duration-300 backdrop-blur-sm">
                         ${emoji}
                     </div>
                     <span class="text-white/80 text-sm font-medium">${label}</span>
@@ -118,7 +117,6 @@
             try {
                 const verseRef = moodVerseMapping[mood][Math.floor(Math.random() * moodVerseMapping[mood].length)];
                 
-                // Reverted to Al Quran Cloud API to fix fetch errors
                 const urls = [
                     `https://api.alquran.cloud/v1/ayah/${verseRef}/en.asad`,
                     `https://api.alquran.cloud/v1/ayah/${verseRef}/bn.bengali`,
@@ -161,24 +159,24 @@
         
         function renderVerseCard(data) {
             verseContainer.innerHTML = `
-                <div class="w-full bg-black/20 backdrop-blur-md rounded-2xl shadow-2xl p-6 md:p-8 relative transition-all duration-500 animate-fade-in">
-                    <p class="font-serif text-3xl md:text-4xl leading-relaxed text-right mb-6" dir="rtl">
+                <div class="w-full bg-black/20 backdrop-blur-md rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 relative transition-all duration-500 animate-fade-in">
+                    <p class="font-serif text-2xl sm:text-3xl md:text-4xl leading-relaxed text-right mb-6" dir="rtl">
                         ${data.arabicText}
                     </p>
-                    <div class="grid md:grid-cols-2 gap-6 text-left">
+                    <div class="grid md:grid-cols-2 gap-y-4 md:gap-y-0 gap-x-6 text-left">
                         <div class="border-l-2 border-teal-400/50 pl-4">
                             <h3 class="font-semibold mb-2 text-teal-300">English</h3>
-                            <p class="italic text-white/90">"${data.englishText}"</p>
+                            <p class="italic text-sm sm:text-base text-white/90">"${data.englishText}"</p>
                         </div>
                         <div class="border-l-2 border-teal-400/50 pl-4">
                             <h3 class="font-semibold mb-2 text-teal-300">বাংলা (Bengali)</h3>
-                            <p class="italic text-white/90">"${data.bengaliText}"</p>
+                            <p class="italic text-sm sm:text-base text-white/90">"${data.bengaliText}"</p>
                         </div>
                     </div>
                     <p class="text-center mt-8 text-sm text-white/60">
                         - Surah ${data.surahName} (${data.surahNumber}:${data.ayahNumber}) -
                     </p>
-                    <div id="action-buttons" class="absolute bottom-4 right-4 flex items-center space-x-3">
+                    <div id="action-buttons" class="absolute bottom-4 right-4 flex items-center space-x-2 sm:space-x-3">
                         <button id="listen-btn" title="Listen" class="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-300 backdrop-blur-sm text-white">${icons.volume}</button>
                         <button id="copy-btn" title="Copy" class="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-300 backdrop-blur-sm text-white">${icons.copy}</button>
                         <button id="share-btn" title="Share" class="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors duration-300 backdrop-blur-sm text-white">${icons.share}</button>
@@ -221,12 +219,27 @@ English: "${currentVerseData.englishText}"
 Bengali: "${currentVerseData.bengaliText}"
 - The Holy Quran, ${currentVerseData.surahName} (${currentVerseData.surahNumber}:${currentVerseData.ayahNumber})
             `;
-            navigator.clipboard.writeText(textToCopy.trim()).then(() => {
-                alert('Verse copied to clipboard!');
-            }).catch(err => {
-                console.error('Failed to copy text: ', err);
+            const textArea = document.createElement('textarea');
+            textArea.value = textToCopy.trim();
+            textArea.style.position = 'fixed'; // Prevent scrolling to bottom of page in MS Edge.
+            textArea.style.top = '0';
+            textArea.style.left = '0';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    alert('Verse copied to clipboard!');
+                } else {
+                    alert('Failed to copy verse.');
+                }
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
                 alert('Failed to copy verse.');
-            });
+            }
+            document.body.removeChild(textArea);
         }
 
         async function shareVerse() {
